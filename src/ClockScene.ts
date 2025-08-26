@@ -295,7 +295,14 @@ function handleCameraController(delta: number) {
   if (controller["e"]?.pressed) {
     movementVector.y -= speed * delta;
   }
-  movementVector.applyEuler(player.rotation);
+  const rotX = new THREE.Matrix4().makeRotationX(player.rotation.x);
+  const rotY = new THREE.Matrix4().makeRotationY(player.rotation.y);
+  const rotZ = new THREE.Matrix4().makeRotationZ(player.rotation.z);
+  const rotationMatrix = new THREE.Matrix4()
+    .multiply(rotZ)
+    .multiply(rotY)
+    .multiply(rotX);
+  movementVector.applyMatrix4(rotationMatrix);
   player.position.add(movementVector);
   const positionStatus = document.getElementById("positionStatus");
   if (positionStatus) {
