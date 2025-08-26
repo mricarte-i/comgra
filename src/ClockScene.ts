@@ -45,6 +45,10 @@ const grid = new THREE.GridHelper(10, 10);
 grid.name = "grid"; // Set a name for the grid to access it later
 scene.add(grid);
 
+const axis = new THREE.AxesHelper(10);
+axis.name = "axis"; // Set a name for the axis to access it later
+scene.add(axis);
+
 // scene setup
 
 createPoint("penduloPivot", new THREE.Vector3(0, 0, 0));
@@ -232,65 +236,93 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <br/>
       - [W], [A], [S], [D] camera translation
       <br/>
-      - Arrow keys camera rotation
-      <br/>
       - [Q], [E] vertical camera translation
       <br/>
-      - [Z], [X] zoom in/out
+      (<p id="positionStatus">x: 0, y: 0, z: 5</p>)
+      <br/>
+      - Arrow keys camera rotation
+      <br/>
+      - [Z], [X] zoom in/out (<p id="zoomStatus">75</p>)
       <br/>
       - [F] toggle follow mode (<p id="followStatus">OFF</p>)
       <br/>
-      - [C] toggle clear buffer (<p id="clearBufferStatus">OFF</p>) 
+      - [C] toggle clear buffer (<p id="clearBufferStatus">ON</p>) 
     </p>
   </div>
 `;
 function handleCameraController(delta: number) {
   var player = camera as THREE.PerspectiveCamera;
   // Handle key controls
+
+  // Rotation
   const rotSpeed = 1;
+  let rotationVector = new THREE.Vector3();
   if (controller["ArrowUp"]?.pressed) {
-    player.rotation.x += rotSpeed * delta;
+    rotationVector.x += rotSpeed * delta;
   }
   if (controller["ArrowDown"]?.pressed) {
-    player.rotation.x -= rotSpeed * delta;
+    rotationVector.x -= rotSpeed * delta;
   }
   if (controller["ArrowLeft"]?.pressed) {
-    player.rotation.y += rotSpeed * delta;
+    rotationVector.y += rotSpeed * delta;
   }
   if (controller["ArrowRight"]?.pressed) {
-    player.rotation.y -= rotSpeed * delta;
+    rotationVector.y -= rotSpeed * delta;
   }
+  player.rotation.x += rotationVector.x;
+  player.rotation.y += rotationVector.y;
+  player.rotation.z += rotationVector.z;
 
+  // Translation
   const speed = 5;
+  let movementVector = new THREE.Vector3();
   if (controller["w"]?.pressed) {
     console.log("ayuda");
-    player.position.z -= speed * delta;
+    movementVector.z -= speed * delta;
   }
   if (controller["s"]?.pressed) {
-    player.position.z += speed * delta;
+    movementVector.z += speed * delta;
   }
   if (controller["a"]?.pressed) {
-    player.position.x -= speed * delta;
+    movementVector.x -= speed * delta;
   }
   if (controller["d"]?.pressed) {
-    player.position.x += speed * delta;
+    movementVector.x += speed * delta;
   }
   if (controller["q"]?.pressed) {
-    player.position.y += speed * delta;
+    movementVector.y += speed * delta;
   }
   if (controller["e"]?.pressed) {
-    player.position.y -= speed * delta;
+    movementVector.y -= speed * delta;
+  }
+  movementVector.applyEuler(player.rotation);
+  player.position.add(movementVector);
+  const positionStatus = document.getElementById("positionStatus");
+  if (positionStatus) {
+    positionStatus.textContent = `x: ${player.position.x.toFixed(
+      2
+    )}, y: ${player.position.y.toFixed(2)}, z: ${player.position.z.toFixed(2)}`;
   }
 
+  // Zoom
   if (controller["z"]?.pressed) {
     player.fov = clamp(player.fov - speed, 10, 180);
+    const zoomStatus = document.getElementById("zoomStatus");
+    if (zoomStatus) {
+      zoomStatus.textContent = player.fov.toFixed(0);
+    }
     player.updateProjectionMatrix(); // Update the projection matrix after changing fov
   }
   if (controller["x"]?.pressed) {
     player.fov = clamp(player.fov + speed, 10, 180);
+    const zoomStatus = document.getElementById("zoomStatus");
+    if (zoomStatus) {
+      zoomStatus.textContent = player.fov.toFixed(0);
+    }
     player.updateProjectionMatrix(); // Update the projection matrix after changing fov
   }
 
+  // Follow clock
   if (controller["f"]?.pressed) {
     follow = !follow; // Toggle follow mode
     console.log("Follow mode:", follow);
@@ -300,6 +332,7 @@ function handleCameraController(delta: number) {
     }
   }
 
+  // Clear buffer
   if (controller["c"]?.pressed) {
     clearBuffer = !clearBuffer; // Toggle clear buffer
     console.log("Clear buffer mode:", clearBuffer);
@@ -307,7 +340,6 @@ function handleCameraController(delta: number) {
     if (clearBufferStatus) {
       clearBufferStatus.textContent = clearBuffer ? "ON" : "OFF";
     }
-
     if (clearBuffer) {
       renderer.autoClear = true; // Enable clearing the buffer
       renderer.autoClearColor = true;
