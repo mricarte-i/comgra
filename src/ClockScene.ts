@@ -1,0 +1,325 @@
+import * as THREE from "three";
+import "./controls.css";
+
+//
+const controller: Record<
+  KeyboardEvent["key"],
+  {
+    pressed: boolean;
+  }
+> = {};
+function setUpKeyControls() {
+  document.addEventListener("keydown", (event) => {
+    controller[event.key] = { pressed: true };
+  });
+  document.addEventListener("keyup", (event) => {
+    controller[event.key] = { pressed: false };
+  });
+}
+setUpKeyControls();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
+//renderer.autoClearDepth = false;
+//renderer.autoClearColor = false;
+renderer.setClearColor(0x000000, 1); // Set background color to black
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+camera.position.z = 5;
+camera.name = "camera"; // Set a name for the camera to access it later
+
+const grid = new THREE.GridHelper(10, 10);
+grid.name = "grid"; // Set a name for the grid to access it later
+scene.add(grid);
+
+// scene setup
+
+createPoint("penduloPivot", new THREE.Vector3(0, 0, 0));
+createBox("pendulo", 0.2, 4, 1, 0x00ff00, true);
+
+createPoint("horasPivot", new THREE.Vector3(0, 0, 0));
+createBox("horas", 0.1, 0.3, 1, 0xff0000);
+
+createPoint("minutosPivot", new THREE.Vector3(0, 0, 0));
+createBox("minutos", 0.05, 0.4, 1, 0x0000ff);
+
+createPoint("segundosPivot", new THREE.Vector3(0, 0, 0));
+createBox("segundos", 0.02, 0.1, 1, 0xffff00);
+
+createPoint("principalCenter", new THREE.Vector3(0, 0, 0));
+createCylinder("principal", 0.5, 0.5, 1, 0xcdcdcd);
+createPoint("segunderoCenter", new THREE.Vector3(0, 0, 0));
+createCylinder("segundero", 0.25 / 2, 0.25 / 2, 1, 0xababab);
+
+var ppal = scene.getObjectByName("principal") as THREE.Mesh;
+ppal.rotation.x = Math.PI / 2; // Rotate to align with the pendulum
+var segero = scene.getObjectByName("segundero") as THREE.Mesh;
+segero.rotation.x = Math.PI / 2; // Rotate to align with the pendulum
+//ppal.add(segero);
+
+var principalCenter = scene.getObjectByName("principalCenter") as THREE.Mesh;
+
+var horasPivot = scene.getObjectByName("horasPivot") as THREE.Mesh;
+var horas = scene.getObjectByName("horas") as THREE.Mesh;
+horas.position.set(0, 0.15, 0.15);
+horasPivot.add(horas);
+principalCenter.add(horasPivot);
+
+var minutosPivot = scene.getObjectByName("minutosPivot") as THREE.Mesh;
+var minutos = scene.getObjectByName("minutos") as THREE.Mesh;
+minutos.position.set(0, 0.2, 0.15);
+minutosPivot.add(minutos);
+principalCenter.add(minutosPivot);
+
+var segunderoCenter = scene.getObjectByName("segunderoCenter") as THREE.Mesh;
+var segundosPivot = scene.getObjectByName("segundosPivot") as THREE.Mesh;
+var segundos = scene.getObjectByName("segundos") as THREE.Mesh;
+segundos.position.set(0, 0.05, 0.05);
+segundosPivot.add(segundos);
+segunderoCenter.add(segundosPivot);
+segunderoCenter.add(segero);
+segunderoCenter.position.set(0, -0.25, 0.05);
+
+principalCenter.add(ppal);
+principalCenter.add(segunderoCenter);
+
+principalCenter.position.set(0, -2, -0.5);
+var pend = scene.getObjectByName("pendulo") as THREE.Mesh;
+pend.add(principalCenter);
+var penduloPivot = scene.getObjectByName("penduloPivot") as THREE.Mesh;
+pend.position.set(0, -2, 0.5);
+penduloPivot.add(pend);
+
+penduloPivot.position.set(0, 4, 0);
+
+// update loop
+
+let lastTimestamp = performance.now();
+animate();
+
+function animate() {
+  //const timestamp = requestAnimationFrame(animate);
+  const timestamp = performance.now();
+  const delta = (timestamp - lastTimestamp) / 1000; // Convert to seconds
+  update(delta);
+  handleCameraController(delta);
+  lastTimestamp = timestamp;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+var follow = false;
+var clearBuffer = false;
+function update(_delta: number) {
+  const timestamp = new Date().getTime();
+  const pendAngle = 15 * Math.cos((180 * timestamp) / 60000); // Oscillate between -15 and 15 degrees
+  /*
+  rotateAboutPoint(
+    pend,
+    new THREE.Vector3(0, 2, 0.5),
+    new THREE.Vector3(0, 0, 1),
+    pendAngle
+  );
+  */
+  var penduloPivot = scene.getObjectByName("penduloPivot") as THREE.Mesh;
+  penduloPivot.rotation.z = THREE.MathUtils.degToRad(pendAngle);
+
+  var principalCenter = scene.getObjectByName("principalCenter") as THREE.Mesh;
+  principalCenter.rotation.z = THREE.MathUtils.degToRad(-pendAngle);
+
+  var segundosPivot = scene.getObjectByName("segundosPivot") as THREE.Mesh;
+  const segAngle = (-360 * timestamp) / 900; // Full rotation every second
+  segundosPivot.rotation.z = THREE.MathUtils.degToRad(segAngle);
+
+  var minutosPivot = scene.getObjectByName("minutosPivot") as THREE.Mesh;
+  const minAngle = (-360 * timestamp) / 60000; // Full rotation every minute
+  minutosPivot.rotation.z = THREE.MathUtils.degToRad(minAngle);
+
+  var horasPivot = scene.getObjectByName("horasPivot") as THREE.Mesh;
+  const hourAngle = (-360 * timestamp) / 3600000; // Full rotation every hour
+  horasPivot.rotation.z = THREE.MathUtils.degToRad(hourAngle);
+
+  if (follow) {
+    const worldPos = principalCenter.getWorldPosition(new THREE.Vector3());
+    camera.position.set(worldPos.x, worldPos.y, worldPos.z + 5);
+    camera.lookAt(worldPos);
+  }
+}
+
+function rotateAboutPoint(
+  object: THREE.Object3D,
+  point: THREE.Vector3,
+  axis: THREE.Vector3, //normalized vector for the axis of rotation
+  theta: number, //radians
+  pointIsWorld = false
+) {
+  if (pointIsWorld) {
+    object.parent?.localToWorld(object.position);
+  }
+
+  object.position.sub(point);
+  object.position.applyAxisAngle(axis, theta);
+  object.position.add(point);
+
+  if (pointIsWorld) {
+    object.parent?.worldToLocal(object.position);
+  }
+  object.rotateOnAxis(axis, theta);
+}
+
+function createBox(
+  name: string,
+  width: number = 1,
+  height: number = 1,
+  depth: number = 1,
+  color: number = 0x00ff00,
+  wireframe: boolean = false
+) {
+  const geometry = new THREE.BoxGeometry(width, height, depth);
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    wireframe,
+  });
+  const pendulo = new THREE.Mesh(geometry, material);
+  pendulo.name = name; // Set a name for the cube to access it later
+  scene.add(pendulo);
+}
+
+function createCylinder(
+  name: string,
+  radiusTop: number = 1,
+  radiusBottom: number = 1,
+  height: number = 1,
+  color: number = 0x00ff00,
+  wireframe: boolean = false
+) {
+  const geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height);
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    wireframe,
+  });
+  const cylinder = new THREE.Mesh(geometry, material);
+  cylinder.name = name; // Set a name for the cylinder to access it later
+  scene.add(cylinder);
+}
+
+function createPoint(name: string, position: THREE.Vector3) {
+  const geometry = new THREE.SphereGeometry(0.05);
+  const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const point = new THREE.Mesh(geometry, material);
+  point.name = name;
+  point.position.copy(position);
+  scene.add(point);
+}
+
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
+  <div class="hovering">
+    <p class="read-the-docs">
+      Controls: 
+      <br/>
+      - [W], [A], [S], [D] camera translation
+      <br/>
+      - Arrow keys camera rotation
+      <br/>
+      - [Q], [E] vertical camera translation
+      <br/>
+      - [Z], [X] zoom in/out
+      <br/>
+      - [F] toggle follow mode (<p id="followStatus">OFF</p>)
+      <br/>
+      - [C] toggle clear buffer (<p id="clearBufferStatus">OFF</p>) 
+    </p>
+  </div>
+`;
+function handleCameraController(delta: number) {
+  var player = camera as THREE.PerspectiveCamera;
+  // Handle key controls
+  const rotSpeed = 1;
+  if (controller["ArrowUp"]?.pressed) {
+    player.rotation.x += rotSpeed * delta;
+  }
+  if (controller["ArrowDown"]?.pressed) {
+    player.rotation.x -= rotSpeed * delta;
+  }
+  if (controller["ArrowLeft"]?.pressed) {
+    player.rotation.y += rotSpeed * delta;
+  }
+  if (controller["ArrowRight"]?.pressed) {
+    player.rotation.y -= rotSpeed * delta;
+  }
+
+  const speed = 5;
+  if (controller["w"]?.pressed) {
+    console.log("ayuda");
+    player.position.z -= speed * delta;
+  }
+  if (controller["s"]?.pressed) {
+    player.position.z += speed * delta;
+  }
+  if (controller["a"]?.pressed) {
+    player.position.x -= speed * delta;
+  }
+  if (controller["d"]?.pressed) {
+    player.position.x += speed * delta;
+  }
+  if (controller["q"]?.pressed) {
+    player.position.y += speed * delta;
+  }
+  if (controller["e"]?.pressed) {
+    player.position.y -= speed * delta;
+  }
+
+  if (controller["z"]?.pressed) {
+    player.fov = clamp(player.fov - speed, 10, 180);
+    player.updateProjectionMatrix(); // Update the projection matrix after changing fov
+  }
+  if (controller["x"]?.pressed) {
+    player.fov = clamp(player.fov + speed, 10, 180);
+    player.updateProjectionMatrix(); // Update the projection matrix after changing fov
+  }
+
+  if (controller["f"]?.pressed) {
+    follow = !follow; // Toggle follow mode
+    console.log("Follow mode:", follow);
+    const followStatus = document.getElementById("followStatus");
+    if (followStatus) {
+      followStatus.textContent = follow ? "ON" : "OFF";
+    }
+  }
+
+  if (controller["c"]?.pressed) {
+    clearBuffer = !clearBuffer; // Toggle clear buffer
+    console.log("Clear buffer mode:", clearBuffer);
+    const clearBufferStatus = document.getElementById("clearBufferStatus");
+    if (clearBufferStatus) {
+      clearBufferStatus.textContent = clearBuffer ? "ON" : "OFF";
+    }
+
+    if (clearBuffer) {
+      renderer.autoClear = true; // Enable clearing the buffer
+      renderer.autoClearColor = true;
+      renderer.setClearColor(0x000000, 1); // Set background color to black
+    } else {
+      renderer.autoClear = false; // Disable clearing the buffer
+      renderer.autoClearColor = false;
+    }
+    //renderer.autoClearColor = false;
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}

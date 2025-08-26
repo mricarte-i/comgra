@@ -1,0 +1,7 @@
+.hovering {
+  position: absolute;
+  color: aquamarine;
+  font-family: monospace;
+  font-size: 1.2em;
+  background-color: gradient(to right, #000000, #434343);
+}
