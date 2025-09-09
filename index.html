@@ -7,7 +7,34 @@
     <title>Vite + TS</title>
   </head>
   <body>
+    <div>
+      <label for="scene-menu">Choose a scene:</label>
+      <select id="scene-menu">
+        <option value="LoaderScene">Loader Scene</option>
+        <option value="BoxScene">Box Scene</option>
+        <option value="ClockScene">Clock Scene</option>
+        <!-- Add more scenes as needed -->
+      </select>
+    </div>
     <div id="app"></div>
-    <script type="module" src="/src/ClockScene.ts"></script>
+    <script type="module" src="/src/LoaderScene.ts" id="scene-script"></script>
+    <script>
+      const sceneMenu = document.getElementById('scene-menu');
+      const sceneScript = document.getElementById('scene-script');
+      sceneMenu.addEventListener('change', (e) => {
+        // Remove previous script
+        if (sceneScript) sceneScript.remove();
+        // Remove previous canvas (if any)
+        document.querySelectorAll('canvas').forEach(c => c.remove());
+        // Remove app content
+        document.getElementById('app').innerHTML = '';
+        // Add new script
+        const newScript = document.createElement('script');
+        newScript.type = 'module';
+        newScript.id = 'scene-script';
+        newScript.src = `/src/${sceneMenu.value}.ts`;
+        document.body.appendChild(newScript);
+      });
+    </script>
   </body>
 </html>

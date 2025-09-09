@@ -10,10 +10,18 @@ const controller: Record<
 > = {};
 function setUpKeyControls() {
   document.addEventListener("keydown", (event) => {
-    controller[event.key] = { pressed: true };
+    let key = event.key;
+    if (event.key.length === 1) {
+      key = event.key.toLowerCase();
+    }
+    controller[key] = { pressed: true };
   });
   document.addEventListener("keyup", (event) => {
-    controller[event.key] = { pressed: false };
+    let key = event.key;
+    if (event.key.length === 1) {
+      key = event.key.toLowerCase();
+    }
+    controller[key] = { pressed: false };
   });
 }
 setUpKeyControls();
@@ -40,6 +48,15 @@ window.addEventListener("resize", () => {
 
 camera.position.z = 5;
 camera.name = "camera"; // Set a name for the camera to access it later
+
+const light = new THREE.AmbientLight(0xffffff, 1); // Soft white light
+scene.add(light);
+
+const directionalLight = new THREE.DirectionalLight(0xff00ee, 0.1);
+directionalLight.position.set(0, 0, 2);
+directionalLight.rotation.x = Math.PI / 2;
+directionalLight.name = "directionalLight";
+scene.add(directionalLight);
 
 const grid = new THREE.GridHelper(10, 10);
 grid.name = "grid"; // Set a name for the grid to access it later
@@ -129,6 +146,13 @@ var follow = false;
 var clearBuffer = false;
 function update(_delta: number) {
   const timestamp = new Date().getTime();
+  const dirLight = scene.getObjectByName(
+    "directionalLight"
+  ) as THREE.DirectionalLight;
+  dirLight.color.setHSL((timestamp / 10000) % 1, 0.5, 0.5);
+  dirLight.rotation.y += THREE.MathUtils.degToRad(15 * _delta);
+  dirLight.intensity = 0.5 + 0.5 * Math.sin((timestamp / 1000) % (2 * Math.PI));
+
   const pendAngle = 15 * Math.cos((180 * timestamp) / 60000); // Oscillate between -15 and 15 degrees
   /*
   rotateAboutPoint(
@@ -193,10 +217,14 @@ function createBox(
   wireframe: boolean = false
 ) {
   const geometry = new THREE.BoxGeometry(width, height, depth);
-  const material = new THREE.MeshBasicMaterial({
+  //const material = new THREE.MeshBasicMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color,
     wireframe,
   });
+  material.roughness = 0.5;
+  material.emissive = new THREE.Color(0xecf542);
+  material.emissiveIntensity = 0.5;
   const pendulo = new THREE.Mesh(geometry, material);
   pendulo.name = name; // Set a name for the cube to access it later
   scene.add(pendulo);
@@ -211,10 +239,16 @@ function createCylinder(
   wireframe: boolean = false
 ) {
   const geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height);
-  const material = new THREE.MeshBasicMaterial({
+  //const material = new THREE.MeshBasicMaterial({
+  //  color,
+  //  wireframe,
+  //});
+  const material = new THREE.MeshStandardMaterial({
     color,
     wireframe,
   });
+  material.roughness = 0.1;
+  material.metalness = 0.5;
   const cylinder = new THREE.Mesh(geometry, material);
   cylinder.name = name; // Set a name for the cylinder to access it later
   scene.add(cylinder);
@@ -222,7 +256,8 @@ function createCylinder(
 
 function createPoint(name: string, position: THREE.Vector3) {
   const geometry = new THREE.SphereGeometry(0.05);
-  const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  //const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
   const point = new THREE.Mesh(geometry, material);
   point.name = name;
   point.position.copy(position);
